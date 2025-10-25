@@ -1,0 +1,57 @@
+name: Auto_MapData
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 18 * * *
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+     
+      - name: 生成时间
+        id: ts
+        run: |
+          echo "utcs=$(TZ=Asia/Shanghai date +%Y-%m-%d_%H:%M)" >> $GITHUB_OUTPUT
+
+      - name: 文件打包
+        run: |
+          dirs=("dbc" "maps" "mmaps" "vmaps" "Cameras")
+          for dir in "${dirs[@]}"; do
+            if [ -d "$dir" ]; then
+              zip -r "${dir}.zip" "$dir"
+            else
+              echo "警告：目录 $dir 不存在，跳过打包"
+            fi
+          done
+
+      - name: 上传Release
+        uses: ncipollo/release-action@v1
+        with:
+          name: MapData
+          tag: MapData
+          body: |
+                 ### ${{ steps.ts.outputs.utcs }}
+                   - AzerothCore-WoTLK地图数据，单独打包，按需
+                     下载，包含zh-CN的dbc解决技能与语言兼容问题。
+                   - AzerothCore WoTLK map data, packaged separately, on-demand
+                     Download dbc with zh CN to solve skills and language compatibility issues.
+          artifacts: |
+                     dbc.zip
+                     maps.zip
+                     mmaps.zip
+                     vmaps.zip
+                     Cameras.zip
+          allowUpdates: true
+          replaceArtifacts: true
+          draft: false
+          prerelease: false
+               
+        env:
+          GITHUB_TOKEN: ${{ secrets.BUILD_DATA }}
